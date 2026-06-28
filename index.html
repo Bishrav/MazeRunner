@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Maze Runner</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <canvas id="game3d" aria-label="The Maze Runner 3D game"></canvas>
+  <canvas id="game" class="hidden" aria-label="Legacy Maze Runner canvas"></canvas>
+
+  <div id="hud" class="hud hidden">
+    <div class="hud-row">
+      <span id="levelLabel">Level 1</span>
+      <span id="themeLabel">Forest Maze</span>
+    </div>
+    <div class="hud-row">
+      <span id="coinLabel">Coins 0/0</span>
+      <span id="scoreLabel">Score 0</span>
+      <span id="timerLabel">00:00</span>
+      <span id="deathLabel">Deaths 0</span>
+    </div>
+    <div id="objectiveLabel" class="objective">Find the exit gate.</div>
+    <div class="meter" aria-hidden="true">
+      <span id="staminaFill"></span>
+    </div>
+    <div id="statusFeed" class="status-feed"></div>
+  </div>
+
+  <div id="centerHint" class="center-hint hidden">Click to capture mouse</div>
+  <div id="damageFlash" class="damage-flash hidden"></div>
+
+  <section id="menu" class="panel">
+    <h1>The Maze Runner</h1>
+    <p>Explore layered 3D mazes, collect coins, read environmental clues, avoid traps, and unlock increasingly hostile paths.</p>
+    <div id="levelGrid" class="level-grid"></div>
+    <div class="menu-actions">
+      <button id="resetSave" type="button">Reset Progress</button>
+      <button id="resumeGame" type="button" class="primary">Start Level 1</button>
+    </div>
+    <div class="control-strip">
+      <span>WASD move</span>
+      <span>Mouse look</span>
+      <span>Shift sprint</span>
+      <span>M map</span>
+      <span>Esc pause</span>
+    </div>
+  </section>
+
+  <section id="pauseMenu" class="panel small hidden">
+    <h2>Paused</h2>
+    <div class="stack">
+      <button id="continueGame" type="button" class="primary">Continue</button>
+      <button id="restartLevel" type="button">Restart Level</button>
+      <button id="backToMenu" type="button">Level Select</button>
+    </div>
+  </section>
+
+  <section id="summary" class="panel small hidden">
+    <h2 id="summaryTitle">Level Complete</h2>
+    <p id="summaryText"></p>
+    <div id="starRating" class="stars"></div>
+    <div class="stack">
+      <button id="nextLevel" type="button" class="primary">Next Level</button>
+      <button id="summaryMenu" type="button">Level Select</button>
+    </div>
+  </section>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.166.1/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.166.1/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

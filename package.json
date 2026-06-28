@@ -1,0 +1,13 @@
+{
+  "name": "maze-runner",
+  "version": "1.0.0",
+  "private": true,
+  "description": "3D maze runner browser game with a small Node backend for progress persistence.",
+  "scripts": {
+    "start": "node backend/server.js",
+    "check": "node --check backend/server.js && node tests/logic-check.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
