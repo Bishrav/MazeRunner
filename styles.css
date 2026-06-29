@@ -189,6 +189,10 @@ button:disabled {
   text-align: left;
   position: relative;
   overflow: hidden;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .level-card::before {
@@ -198,6 +202,13 @@ button:disabled {
   background: linear-gradient(135deg, var(--card-accent, rgba(241, 184, 58, 0.2)), transparent 48%);
   opacity: 0.38;
   pointer-events: none;
+}
+
+.level-card:not(:disabled):hover,
+.level-card:not(:disabled):focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(241, 184, 58, 0.72);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.32);
 }
 
 .level-card strong,
@@ -216,6 +227,24 @@ button:disabled {
   line-height: 1.35;
 }
 
+.level-card .stage-badge {
+  width: fit-content;
+  margin-bottom: 8px;
+  border: 1px solid rgba(241, 184, 58, 0.38);
+  border-radius: 999px;
+  padding: 4px 8px;
+  color: #f8d06b;
+  background: rgba(241, 184, 58, 0.12);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.level-card .reward-line {
+  margin-top: 8px;
+  color: #86efac;
+  font-weight: 700;
+}
+
 .menu-actions,
 .stack {
   display: grid;
@@ -223,8 +252,114 @@ button:disabled {
 }
 
 .menu-actions {
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
+
+.builder .builder-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.builder-layout {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 14px;
+}
+
+.builder-label {
+  margin-bottom: 8px;
+  color: #f8d06b;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.builder-palette,
+.builder-board {
+  display: grid;
+  gap: 6px;
+}
+
+.builder-palette-wrap,
+.builder-board-wrap {
+  min-width: 0;
+}
+
+.builder-board-wrap {
+  overflow: auto;
+}
+
+.builder-palette {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.builder-piece,
+.builder-cell {
+  min-height: 34px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.builder-piece {
+  padding: 8px 6px;
+  text-align: left;
+  font-size: 12px;
+  user-select: none;
+}
+
+.builder-piece .piece-key,
+.builder-cell .piece-key {
+  display: block;
+  margin-bottom: 2px;
+  color: #f8d06b;
+  font-weight: 700;
+}
+
+.builder-piece[data-tool="S"] { background: rgba(34, 197, 94, 0.16); }
+.builder-piece[data-tool="E"] { background: rgba(245, 158, 11, 0.16); }
+.builder-piece[data-tool="#"] { background: rgba(124, 58, 237, 0.16); }
+.builder-piece[data-tool="B"] { background: rgba(148, 163, 184, 0.16); }
+.builder-piece[data-tool="P"] { background: rgba(34, 211, 238, 0.16); }
+.builder-piece[data-tool="X"] { background: rgba(239, 68, 68, 0.16); }
+.builder-piece[data-tool="D"] { background: rgba(244, 63, 94, 0.16); }
+.builder-piece[data-tool="T"] { background: rgba(251, 191, 36, 0.16); }
+.builder-piece[data-tool="C"] { background: rgba(245, 184, 58, 0.16); }
+.builder-piece[data-tool="R"] { background: rgba(56, 189, 248, 0.16); }
+
+.builder-board {
+  grid-template-columns: repeat(11, 34px);
+  grid-auto-rows: 34px;
+  width: max-content;
+}
+
+.builder-cell {
+  width: 34px;
+  height: 34px;
+  font-size: 12px;
+  color: #f5f7fb;
+  background: rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+}
+
+.builder-cell.active {
+  border-color: rgba(241, 184, 58, 0.78);
+  box-shadow: inset 0 0 0 1px rgba(241, 184, 58, 0.35);
+}
+
+.builder-cell[data-cell="#"] { background: rgba(91, 67, 33, 0.64); }
+.builder-cell[data-cell="B"] { background: rgba(148, 163, 184, 0.36); }
+.builder-cell[data-cell="P"] { background: rgba(34, 211, 238, 0.28); }
+.builder-cell[data-cell="X"] { background: rgba(88, 28, 28, 0.7); }
+.builder-cell[data-cell="D"] { background: rgba(120, 19, 35, 0.52); }
+.builder-cell[data-cell="T"] { background: rgba(161, 98, 7, 0.44); }
+.builder-cell[data-cell="C"] { background: rgba(217, 165, 13, 0.4); }
+.builder-cell[data-cell="R"] { background: rgba(14, 116, 144, 0.42); }
+.builder-cell[data-cell="S"] { background: rgba(34, 197, 94, 0.46); }
+.builder-cell[data-cell="E"] { background: rgba(245, 158, 11, 0.46); }
 
 .stars {
   min-height: 34px;
@@ -257,6 +392,15 @@ button:disabled {
 @media (max-width: 560px) {
   .panel {
     padding: 20px;
+  }
+
+  .builder-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .builder-board {
+    grid-template-columns: repeat(11, 30px);
+    grid-auto-rows: 30px;
   }
 
   .menu-actions {
