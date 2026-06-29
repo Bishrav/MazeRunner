@@ -17,6 +17,7 @@
     </div>
     <div class="hud-row">
       <span id="coinLabel">Coins 0/0</span>
+      <span id="comboLabel">Combo x1</span>
       <span id="scoreLabel">Score 0</span>
       <span id="timerLabel">00:00</span>
       <span id="deathLabel">Deaths 0</span>
@@ -37,6 +38,7 @@
     <div id="levelGrid" class="level-grid"></div>
     <div class="menu-actions">
       <button id="resetSave" type="button">Reset Progress</button>
+      <button id="builderMode" type="button">Builder Sandbox</button>
       <button id="resumeGame" type="button" class="primary">Start Level 1</button>
     </div>
     <div class="control-strip">
@@ -45,6 +47,26 @@
       <span>Shift sprint</span>
       <span>M map</span>
       <span>Esc pause</span>
+    </div>
+  </section>
+
+  <section id="builderPanel" class="panel builder hidden">
+    <h2>Builder Sandbox</h2>
+    <p>Drag pieces onto the grid, shape the route, then play your custom level.</p>
+    <div class="builder-toolbar">
+      <button id="builderClose" type="button">Close</button>
+      <button id="builderClear" type="button">Clear Board</button>
+      <button id="builderPlay" type="button" class="primary">Play Custom Level</button>
+    </div>
+    <div class="builder-layout">
+      <div class="builder-palette-wrap">
+        <div class="builder-label">Pieces</div>
+        <div id="builderPalette" class="builder-palette"></div>
+      </div>
+      <div class="builder-board-wrap">
+        <div class="builder-label">Parkour Board</div>
+        <div id="builderBoard" class="builder-board" aria-label="Builder board"></div>
+      </div>
     </div>
   </section>
 
@@ -71,7 +93,9 @@
     {
       "imports": {
         "three": "https://unpkg.com/three@0.166.1/build/three.module.js",
-        "three/addons/": "https://unpkg.com/three@0.166.1/examples/jsm/"
+        "three/addons/": "https://unpkg.com/three@0.166.1/examples/jsm/",
+        "three/examples/": "https://unpkg.com/three@0.166.1/examples/",
+        "@needle-tools/gltf-progressive": "https://cdn.jsdelivr.net/npm/@needle-tools/gltf-progressive@3.2.0/gltf-progressive.min.js"
       }
     }
   </script>

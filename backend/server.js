@@ -68,7 +68,7 @@ async function handleApi(request, response, pathname) {
   if (pathname === "/api/progress" && request.method === "POST") {
     const body = JSON.parse((await readBody(request)) || "{}");
     const current = readProgress();
-    const unlocked = Math.max(1, Math.min(3, Number(body.unlocked || current.unlocked || 1)));
+    const unlocked = Math.max(1, Math.min(7, Number(body.unlocked || current.unlocked || 1)));
     const completion = body.completion && typeof body.completion === "object" ? body.completion : null;
     const completions = Array.isArray(current.completions) ? current.completions.slice(-49) : [];
     if (completion) completions.push({ ...completion, savedAt: new Date().toISOString() });
