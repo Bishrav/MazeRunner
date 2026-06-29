@@ -239,6 +239,7 @@ const state = {
     verticalVelocity: 0,
     parkourStarted: false,
     climbing: null,
+    climbPhase: 0,
     yaw: 0,
     moving: false,
   },
@@ -853,145 +854,257 @@ function addSkyMachineParkour(width, depth) {
 
 function addHomeParkourStage(width, depth) {
   const home = new THREE.Group();
+  const baseX = -2.5;
+  const baseZ = -1.4;
   const floorData = [
-    { x: -18, y: 1.05, z: -13, w: 11, d: 7 },
-    { x: 0, y: 2.45, z: -1, w: 12, d: 7 },
-    { x: 18, y: 3.95, z: 11, w: 11, d: 7 },
+    { x: baseX, y: 0.1, z: baseZ, w: 18.5, d: 13.5 },
+    { x: baseX, y: 2.9, z: baseZ, w: 18.5, d: 13.5 },
+    { x: baseX, y: 5.7, z: baseZ, w: 18.5, d: 13.5 },
   ];
 
-  floorData.forEach((floor, index) => {
-    addParkourPlatform(home, { ...floor, index, rail: true });
-    const wallBack = new THREE.Mesh(new THREE.BoxGeometry(floor.w, 2.4, 0.22), materials.wall);
-    wallBack.position.set(floor.x, floor.y + 1.1, floor.z + floor.d / 2);
-    wallBack.castShadow = true;
-    home.add(wallBack);
+  const foundation = new THREE.Mesh(new THREE.BoxGeometry(24, 0.34, 19), materials.stone);
+  foundation.position.set(baseX, 0.05, baseZ);
+  foundation.castShadow = true;
+  home.add(foundation);
 
-    const sideWall = new THREE.Mesh(new THREE.BoxGeometry(0.22, 2.4, floor.d), materials.wall);
-    sideWall.position.set(floor.x - floor.w / 2, floor.y + 1.1, floor.z);
-    sideWall.castShadow = true;
-    home.add(sideWall);
+  floorData.forEach((floor, index) => {
+    const shell = new THREE.Group();
+    const floorTop = floor.y + 0.22;
+    const base = new THREE.Mesh(new THREE.BoxGeometry(floor.w, 0.44, floor.d), materials.highFloor);
+    base.position.y = floor.y;
+    base.castShadow = true;
+    base.receiveShadow = true;
+
+    const front = createHouseFrontWall(floor);
+    front.position.set(floor.x, 0, floor.z - floor.d / 2);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(floor.w, 2.55, 0.22), materials.wall);
+    back.position.set(floor.x, floor.y + 1.12, floor.z + floor.d / 2);
+    const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.22, 2.55, floor.d), materials.wall);
+    leftWall.position.set(floor.x - floor.w / 2, floor.y + 1.12, floor.z);
+    const rightWall = leftWall.clone();
+    rightWall.position.x = floor.x + floor.w / 2;
+
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(floor.w + 1.3, 0.22, floor.d + 1.0), index % 2 ? materials.carnivalBlue : materials.carnivalRed);
+    roof.position.set(floor.x, floor.y + 2.58, floor.z);
+    roof.rotation.z = index % 2 ? 0.02 : -0.02;
+    roof.castShadow = true;
+
+    const ring = new THREE.Mesh(new THREE.BoxGeometry(floor.w + 0.25, 0.16, floor.d + 0.25), materials.finishGold);
+    ring.position.set(floor.x, floor.y + 2.52, floor.z);
+    ring.castShadow = true;
+
+    shell.add(base, front, back, leftWall, rightWall, ring, roof);
+    state.platforms.push({ x: floor.x, z: floor.z, width: floor.w - 0.5, depth: floor.d - 0.5, y: floorTop });
+
+    const floorPillars = [
+      [-floor.w / 2 + 0.35, -floor.d / 2 + 0.35],
+      [floor.w / 2 - 0.35, -floor.d / 2 + 0.35],
+      [-floor.w / 2 + 0.35, floor.d / 2 - 0.35],
+      [floor.w / 2 - 0.35, floor.d / 2 - 0.35],
+    ];
+    floorPillars.forEach(([xOffset, zOffset]) => {
+      const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.32, floor.y + 1.0, 0.32), materials.bark);
+      pillar.position.set(floor.x + xOffset, (floor.y + 1.0) / 2, floor.z + zOffset);
+      pillar.castShadow = true;
+      shell.add(pillar);
+    });
+
+    addHouseExteriorDetails(shell, floor, index);
+    addHouseInterior(shell, floor, index);
 
     for (let i = 0; i < 4; i += 1) {
-      const obstacle = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.24, 1.2), i % 2 ? materials.pitGlow : materials.parkourPad);
-      obstacle.position.set(floor.x - floor.w / 2 + 2 + i * 2.2, floor.y + 0.32 + i * 0.18, floor.z - 1.8 + (i % 2) * 3.6);
+      const obstacle = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.24, 1.25), i % 2 ? materials.pitGlow : materials.parkourPad);
+      obstacle.position.set(floor.x - floor.w / 2 + 2.3 + i * 2.5, floor.y + 0.32 + i * 0.18, floor.z - 2.0 + (i % 2) * 4.0);
       obstacle.castShadow = true;
       obstacle.receiveShadow = true;
-      home.add(obstacle);
-      state.platforms.push({ x: obstacle.position.x, z: obstacle.position.z, width: 1.25, depth: 1.25, y: obstacle.position.y + 0.14 });
+      shell.add(obstacle);
+      state.platforms.push({ x: obstacle.position.x, z: obstacle.position.z, width: 1.22, depth: 1.22, y: obstacle.position.y + 0.12 });
     }
+
+    if (index < floorData.length - 1) {
+      const ladder = createLadder(floor.y + 1.7);
+      ladder.position.set(floor.x - floor.w / 2 - 0.2, 0.02, floor.z + floor.d / 2 - 0.35);
+      ladder.rotation.y = Math.PI / 2;
+      shell.add(ladder);
+
+      const landing = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.18, 2.6), materials.rope);
+      landing.position.set(floor.x - floor.w / 2 + 3.0, floorTop + 0.05, floor.z + floor.d / 2 - 2.4);
+      landing.castShadow = true;
+      shell.add(landing);
+      state.platforms.push({ x: landing.position.x, z: landing.position.z, width: 2.9, depth: 2.5, y: landing.position.y + 0.09 });
+
+      state.ladders.push({
+        x: ladder.position.x + 0.18,
+        z: ladder.position.z + 0.28,
+        climbX: ladder.position.x + 0.18,
+        climbZ: ladder.position.z + 0.28,
+        width: 1.15,
+        depth: 1.4,
+        targetY: floorTop,
+        exitX: landing.position.x,
+        exitZ: landing.position.z,
+      });
+    }
+
+    home.add(shell);
   });
 
-  const roof = new THREE.Mesh(new THREE.BoxGeometry(13, 0.32, 8), materials.carnivalRed);
-  roof.position.set(18, 5.65, 11);
-  roof.rotation.z = 0.08;
-  roof.castShadow = true;
-  home.add(roof);
-  state.platforms.push({ x: 18, z: 11, width: 12.2, depth: 7.2, y: 5.86 });
+  const roofCap = new THREE.Mesh(new THREE.BoxGeometry(20.2, 0.28, 15.2), materials.carnivalRed);
+  roofCap.position.set(baseX, 8.72, baseZ);
+  roofCap.castShadow = true;
+  home.add(roofCap);
 
+  const porch = new THREE.Mesh(new THREE.BoxGeometry(6.2, 0.2, 3.2), materials.finishGold);
+  porch.position.set(baseX - 5.8, 0.18, baseZ + 5.2);
+  porch.castShadow = true;
+  home.add(porch);
+
+  state.platforms.push({ x: baseX, z: baseZ, width: 20, depth: 15, y: 0.32 });
   environment.add(home);
 }
 
 function addTowerHomeParkour(width, depth) {
   const tower = new THREE.Group();
   const houseFloors = [
-    { x: -18, y: 1.1, z: -12, w: 12, d: 7.5 },
-    { x: 0, y: 3.0, z: 0, w: 13, d: 8 },
-    { x: 19, y: 4.95, z: 13, w: 12, d: 7.5 },
+    { x: -3, y: 0.1, z: -1.2, w: 18, d: 13 },
+    { x: -3, y: 2.9, z: -1.2, w: 18, d: 13 },
+    { x: -3, y: 5.8, z: -1.2, w: 18, d: 13 },
   ];
 
   houseFloors.forEach((floor, index) => {
     const shell = new THREE.Group();
-    const base = new THREE.Mesh(new THREE.BoxGeometry(floor.w, 0.42, floor.d), materials.highFloor);
+    const floorTop = floor.y + 0.25;
+    const base = new THREE.Mesh(new THREE.BoxGeometry(floor.w, 0.5, floor.d), materials.highFloor);
     base.position.y = floor.y;
     base.castShadow = true;
     base.receiveShadow = true;
 
-    const front = new THREE.Mesh(new THREE.BoxGeometry(floor.w, 2.3, 0.22), materials.wall);
-    front.position.set(floor.x, floor.y + 1.08, floor.z - floor.d / 2);
-    const back = front.clone();
-    back.position.z = floor.z + floor.d / 2;
+    const front = createHouseFrontWall(floor);
+    front.position.set(floor.x, 0, floor.z - floor.d / 2);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(floor.w, 2.7, 0.24), materials.wall);
+    back.position.set(floor.x, floor.y + 1.2, floor.z + floor.d / 2);
 
-    const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.22, 2.3, floor.d), materials.wall);
-    leftWall.position.set(floor.x - floor.w / 2, floor.y + 1.08, floor.z);
+    const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.24, 2.7, floor.d), materials.wall);
+    leftWall.position.set(floor.x - floor.w / 2, floor.y + 1.2, floor.z);
     const rightWall = leftWall.clone();
     rightWall.position.x = floor.x + floor.w / 2;
 
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(floor.w + 1.2, 0.28, floor.d + 0.8), index % 2 ? materials.carnivalBlue : materials.carnivalRed);
-    roof.position.set(floor.x, floor.y + 2.38, floor.z);
-    roof.rotation.z = index % 2 ? 0.03 : -0.02;
+    const topRing = new THREE.Mesh(new THREE.BoxGeometry(floor.w + 0.32, 0.16, floor.d + 0.32), materials.finishGold);
+    topRing.position.set(floor.x, floor.y + 2.66, floor.z);
+    topRing.castShadow = true;
+
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(floor.w + 1.6, 0.2, floor.d + 1.3), index % 2 ? materials.carnivalBlue : materials.carnivalRed);
+    roof.position.set(floor.x, floor.y + 2.72, floor.z);
+    roof.rotation.z = index % 2 ? 0.025 : -0.018;
     roof.castShadow = true;
 
-    shell.add(base, front, back, leftWall, rightWall, roof);
+    const rafters = createRoofRafters(floor, index);
+
+    shell.add(base, front, back, leftWall, rightWall, topRing, roof, rafters);
+    state.platforms.push({ x: floor.x, z: floor.z, width: floor.w - 0.5, depth: floor.d - 0.5, y: floorTop });
+
+    const cornerPillars = [
+      [-floor.w / 2 + 0.4, -floor.d / 2 + 0.4],
+      [floor.w / 2 - 0.4, -floor.d / 2 + 0.4],
+      [-floor.w / 2 + 0.4, floor.d / 2 - 0.4],
+      [floor.w / 2 - 0.4, floor.d / 2 - 0.4],
+    ];
+    cornerPillars.forEach(([xOffset, zOffset]) => {
+      const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.34, floor.y + 1.1, 0.34), materials.bark);
+      pillar.position.set(floor.x + xOffset, (floor.y + 1.1) / 2, floor.z + zOffset);
+      pillar.castShadow = true;
+      shell.add(pillar);
+    });
+
+    const groundDeck = new THREE.Mesh(new THREE.BoxGeometry(floor.w + 3.2, 0.22, floor.d + 3.2), materials.stone);
+    groundDeck.position.set(floor.x, 0.05, floor.z);
+    shell.add(groundDeck);
+
+    addHouseExteriorDetails(shell, floor, index);
+    addHouseInterior(shell, floor, index);
 
     for (let i = 0; i < 5; i += 1) {
-      const block = new THREE.Mesh(new THREE.BoxGeometry(1.28, 0.26, 1.28), i % 2 ? materials.pitGlow : materials.parkourPad);
-      block.position.set(floor.x - floor.w / 2 + 2.1 + i * 2.0, floor.y + 0.35 + i * 0.18, floor.z - 1.5 + (i % 2) * 3.0);
+      const block = new THREE.Mesh(new THREE.BoxGeometry(1.45, 0.3, 1.45), i % 2 ? materials.pitGlow : materials.parkourPad);
+      block.position.set(floor.x - floor.w / 2 + 2.8 + i * 2.5, floor.y + 0.42 + i * 0.22, floor.z - 2.2 + (i % 2) * 4.2);
       block.castShadow = true;
       block.receiveShadow = true;
       shell.add(block);
-      state.platforms.push({ x: block.position.x, z: block.position.z, width: 1.28, depth: 1.28, y: block.position.y + 0.13 });
+      state.platforms.push({ x: block.position.x, z: block.position.z, width: 1.42, depth: 1.42, y: block.position.y + 0.15 });
     }
 
     const pitPositions = [
-      new THREE.Vector3(floor.x - floor.w * 0.18, 0, floor.z + 0.75),
-      new THREE.Vector3(floor.x + floor.w * 0.18, 0, floor.z - 0.75),
+      new THREE.Vector3(floor.x - floor.w * 0.22, 0, floor.z + 1.1),
+      new THREE.Vector3(floor.x + floor.w * 0.2, 0, floor.z - 1.2),
     ];
     pitPositions.forEach((pitPos, pitIndex) => {
       addPit(pitPos);
-      const bridge = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.16, 2.4), pitIndex % 2 ? materials.finishGold : materials.rope);
-      bridge.position.set(pitPos.x, floor.y + 0.35, pitPos.z + (pitIndex ? -1.2 : 1.2));
-      bridge.rotation.z = pitIndex ? 0.14 : -0.12;
+      const bridge = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.16, 3.2), pitIndex % 2 ? materials.finishGold : materials.rope);
+      bridge.position.set(pitPos.x, floor.y + 0.46, pitPos.z + (pitIndex ? -1.45 : 1.45));
+      bridge.rotation.z = pitIndex ? 0.1 : -0.1;
       bridge.castShadow = true;
       shell.add(bridge);
-      state.platforms.push({ x: bridge.position.x, z: bridge.position.z, width: 0.92, depth: 2.4, y: bridge.position.y + 0.08, rotationY: bridge.rotation.y });
+      state.platforms.push({ x: bridge.position.x, z: bridge.position.z, width: 1.05, depth: 3.2, y: bridge.position.y + 0.08, rotationY: bridge.rotation.y });
     });
 
-    const buildBlock = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.72, 2.2), materials.highFloor);
-    buildBlock.position.set(floor.x + floor.w * 0.22, floor.y + 0.42, floor.z + floor.d * 0.22);
+    const buildBlock = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.0, 3.2), materials.highFloor);
+    buildBlock.position.set(floor.x + floor.w * 0.18, floor.y + 0.6, floor.z + floor.d * 0.16);
     buildBlock.castShadow = true;
     buildBlock.receiveShadow = true;
     shell.add(buildBlock);
-    state.platforms.push({ x: buildBlock.position.x, z: buildBlock.position.z, width: 2.2, depth: 2.2, y: buildBlock.position.y + 0.36 });
+    state.platforms.push({ x: buildBlock.position.x, z: buildBlock.position.z, width: 3.1, depth: 3.1, y: buildBlock.position.y + 0.5 });
 
-    const ladder = createLadder(floor.y + 1.55);
-    ladder.position.set(floor.x - floor.w / 2 - 0.9, 0.02, floor.z + floor.d / 2 - 0.12);
+    const ladderHeight = floor.y + 1.85;
+    const ladder = createLadder(ladderHeight);
+    ladder.position.set(floor.x - floor.w / 2 - 0.22, 0.02, floor.z + floor.d / 2 - 0.35);
     ladder.rotation.y = Math.PI / 2;
     shell.add(ladder);
+    const ladderLandingX = floor.x - floor.w / 2 + 3.2;
+    const ladderLandingZ = floor.z + floor.d / 2 - 2.6;
     state.ladders.push({
-      x: ladder.position.x + 0.1,
-      z: ladder.position.z + 0.2,
-      climbX: ladder.position.x + 0.1,
-      climbZ: ladder.position.z + 0.2,
-      width: 1.45,
-      depth: 1.5,
-      targetY: floor.y + 0.3,
-      exitX: floor.x - floor.w / 2 + 1.1,
-      exitZ: floor.z + floor.d / 2 - 1.05,
+      x: ladder.position.x + 0.18,
+      z: ladder.position.z + 0.28,
+      climbX: ladder.position.x + 0.18,
+      climbZ: ladder.position.z + 0.28,
+      width: 1.15,
+      depth: 1.4,
+      targetY: floorTop,
+      exitX: ladderLandingX,
+      exitZ: ladderLandingZ,
     });
 
-    const railing = new THREE.Mesh(new THREE.BoxGeometry(floor.w - 0.8, 0.2, 0.16), materials.finishGold);
-    railing.position.set(floor.x, floor.y + 0.52, floor.z - floor.d / 2);
+    const ladderLanding = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.2, 3.0), materials.rope);
+    ladderLanding.position.set(ladderLandingX, floorTop + 0.06, ladderLandingZ);
+    ladderLanding.castShadow = true;
+    shell.add(ladderLanding);
+    state.platforms.push({ x: ladderLanding.position.x, z: ladderLanding.position.z, width: 3.7, depth: 2.9, y: ladderLanding.position.y + 0.1 });
+
+    const railing = new THREE.Mesh(new THREE.BoxGeometry(floor.w - 1.2, 0.24, 0.18), materials.finishGold);
+    railing.position.set(floor.x, floor.y + 0.62, floor.z - floor.d / 2);
     railing.castShadow = true;
     shell.add(railing);
+
+    const wallClamp = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.24, 0.76), materials.finishGold);
+    wallClamp.position.set(floor.x - floor.w / 2 + 0.02, floor.y + 0.92, floor.z + floor.d / 2 - 0.14);
+    shell.add(wallClamp);
 
     tower.add(shell);
   });
 
-  const walkway = new THREE.Mesh(new THREE.BoxGeometry(9.5, 0.2, 0.75), materials.rope);
-  walkway.position.set(0, 2.0, 0);
+  const walkway = new THREE.Mesh(new THREE.BoxGeometry(14.8, 0.22, 1.0), materials.rope);
+  walkway.position.set(-3, 2.45, -1.2);
   walkway.rotation.y = 0.16;
   walkway.castShadow = true;
   tower.add(walkway);
-  state.platforms.push({ x: 0, z: 0, width: 9.6, depth: 0.95, y: 2.1, rotationY: 0.16 });
+  state.platforms.push({ x: -3, z: -1.2, width: 14.9, depth: 1.15, y: 2.57, rotationY: 0.16 });
 
-  const railRun = new THREE.Mesh(new THREE.BoxGeometry(10.4, 0.15, 0.16), materials.carnivalRed);
-  railRun.position.set(0, 2.35, -0.35);
+  const railRun = new THREE.Mesh(new THREE.BoxGeometry(15.6, 0.16, 0.2), materials.carnivalRed);
+  railRun.position.set(-3, 2.75, -1.58);
   railRun.rotation.y = 0.16;
   tower.add(railRun);
 
   for (let i = 0; i < 10; i += 1) {
     const stepping = new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.88, 0.24, 8), i % 2 ? materials.carnivalBlue : materials.parkourPad);
-    stepping.position.set(-25 + i * 5.4, 0.55 + i * 0.16, -5 + Math.sin(i * 1.2) * 5);
+    stepping.position.set(-24 + i * 5.2, 0.15 + i * 0.16, -5 + Math.sin(i * 1.2) * 5);
     stepping.rotation.y = Math.PI / 7;
     stepping.castShadow = true;
     tower.add(stepping);
@@ -999,6 +1112,160 @@ function addTowerHomeParkour(width, depth) {
   }
 
   environment.add(tower);
+}
+
+function addHouseExteriorDetails(shell, floor, index) {
+  const trimColor = index % 2 ? materials.carnivalBlue : materials.carnivalRed;
+  const windowXs = [-floor.w * 0.28, -floor.w * 0.05, floor.w * 0.18];
+  const windowZ = floor.z - floor.d / 2 + 0.05;
+  windowXs.forEach((xOffset, winIndex) => {
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.0, 0.14), materials.finishWhite);
+    frame.position.set(floor.x + xOffset, floor.y + 1.15, windowZ);
+    const pane = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.64, 0.06), materials.finishBlue);
+    pane.position.set(floor.x + xOffset, floor.y + 1.12, windowZ + 0.02);
+    shell.add(frame, pane);
+    if (winIndex === 1) {
+      const awning = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.16, 0.65), trimColor);
+      awning.position.set(floor.x + xOffset, floor.y + 1.75, windowZ + 0.12);
+      shell.add(awning);
+    }
+  });
+
+  const door = new THREE.Mesh(new THREE.BoxGeometry(1.3, 2.05, 0.16), materials.bark);
+  door.position.set(floor.x - floor.w * 0.32, floor.y + 1.0, floor.z - floor.d / 2 + 0.02);
+  shell.add(door);
+
+  const porch = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.2, 1.6), materials.finishGold);
+  porch.position.set(floor.x - floor.w * 0.32, floor.y + 0.22, floor.z - floor.d / 2 + 0.8);
+  shell.add(porch);
+
+  [-0.9, 0.9].forEach((offset) => {
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 2.0, 8), materials.finishWhite);
+    col.position.set(floor.x - floor.w * 0.32 + offset, floor.y + 1.02, floor.z - floor.d / 2 + 0.12);
+    shell.add(col);
+  });
+
+  const gable = new THREE.Mesh(new THREE.BoxGeometry(floor.w * 0.36, 0.34, floor.d + 1.0), materials.carnivalRed);
+  gable.position.set(floor.x, floor.y + 3.05, floor.z);
+  gable.rotation.z = index % 2 ? 0.06 : -0.06;
+  shell.add(gable);
+
+  const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.4, 0.9), materials.carnivalBlue);
+  chimney.position.set(floor.x + floor.w * 0.26, floor.y + 3.08, floor.z + floor.d * 0.22);
+  shell.add(chimney);
+}
+
+function createHouseFrontWall(floor) {
+  const front = new THREE.Group();
+  const wallHeight = 2.7;
+  const gateWidth = Math.min(4.4, floor.w * 0.28);
+  const gateHeight = 2.25;
+  const sideWidth = Math.max(0.9, (floor.w - gateWidth) / 2 - 0.1);
+  const wallThickness = 0.24;
+
+  const left = new THREE.Mesh(new THREE.BoxGeometry(sideWidth, wallHeight, wallThickness), materials.wall);
+  left.position.set(-floor.w / 2 + sideWidth / 2, floor.y + 1.2, 0);
+  const right = new THREE.Mesh(new THREE.BoxGeometry(sideWidth, wallHeight, wallThickness), materials.wall);
+  right.position.set(floor.w / 2 - sideWidth / 2, floor.y + 1.2, 0);
+  const top = new THREE.Mesh(
+    new THREE.BoxGeometry(gateWidth + 0.4, wallHeight - gateHeight + 0.28, wallThickness),
+    materials.wall
+  );
+  top.position.set(0, floor.y + gateHeight + 0.38, 0);
+
+  const gateFrameLeft = new THREE.Mesh(new THREE.BoxGeometry(0.16, gateHeight, 0.18), materials.finishGold);
+  gateFrameLeft.position.set(-gateWidth / 2, floor.y + gateHeight / 2, 0.08);
+  const gateFrameRight = gateFrameLeft.clone();
+  gateFrameRight.position.x = gateWidth / 2;
+  const gateBeam = new THREE.Mesh(new THREE.BoxGeometry(gateWidth + 0.3, 0.18, 0.18), materials.carnivalRed);
+  gateBeam.position.set(0, floor.y + gateHeight + 0.07, 0.08);
+
+  const gateDoor = new THREE.Group();
+  const doorLeafLeft = new THREE.Mesh(new THREE.BoxGeometry(gateWidth / 2 - 0.18, gateHeight - 0.18, 0.1), materials.bark);
+  doorLeafLeft.position.set(-gateWidth / 2 - 0.28, floor.y + gateHeight / 2 - 0.02, 0.14);
+  doorLeafLeft.rotation.y = -0.85;
+  const doorLeafRight = doorLeafLeft.clone();
+  doorLeafRight.position.set(gateWidth / 2 + 0.28, floor.y + gateHeight / 2 - 0.02, 0.14);
+  doorLeafRight.rotation.y = 0.85;
+  gateDoor.add(doorLeafLeft, doorLeafRight);
+
+  const arch = new THREE.Mesh(new THREE.TorusGeometry(gateWidth / 2 + 0.16, 0.06, 8, 28, Math.PI), materials.finishGold);
+  arch.position.set(0, floor.y + gateHeight + 0.35, 0.12);
+  arch.rotation.z = Math.PI;
+
+  front.add(left, right, top, gateFrameLeft, gateFrameRight, gateBeam, arch, gateDoor);
+  return front;
+}
+
+function createRoofRafters(floor, index) {
+  const rafters = new THREE.Group();
+  const beamColor = index % 2 ? materials.finishGold : materials.finishWhite;
+  const beamGeo = new THREE.BoxGeometry(0.18, floor.d + 0.6, 0.18);
+  const positions = [-floor.w * 0.32, -floor.w * 0.06, floor.w * 0.2];
+  positions.forEach((xOffset, beamIndex) => {
+    const beam = new THREE.Mesh(beamGeo, beamColor);
+    beam.position.set(floor.x + xOffset, floor.y + 1.85, floor.z);
+    beam.rotation.z = (beamIndex - 1) * 0.14;
+    rafters.add(beam);
+  });
+
+  const ridge = new THREE.Mesh(new THREE.BoxGeometry(floor.w + 0.7, 0.16, 0.22), materials.finishGold);
+  ridge.position.set(floor.x, floor.y + 2.82, floor.z);
+  rafters.add(ridge);
+  return rafters;
+}
+
+function addHouseInterior(shell, floor, index) {
+  const interiorY = floor.y + 0.28;
+  const rug = new THREE.Mesh(new THREE.BoxGeometry(floor.w * 0.52, 0.04, floor.d * 0.36), index % 2 ? materials.parkourPad : materials.carnivalBlue);
+  rug.position.set(floor.x + floor.w * 0.08, interiorY + 0.02, floor.z + 0.1);
+  shell.add(rug);
+
+  const table = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.2, 1.4), materials.finishGold);
+  table.position.set(floor.x - floor.w * 0.02, interiorY + 0.95, floor.z + floor.d * 0.1);
+  shell.add(table);
+
+  for (let i = 0; i < 4; i += 1) {
+    const chair = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.8, 0.5), materials.bark);
+    chair.position.set(floor.x - 1.2 + (i % 2) * 2.4, interiorY + 0.48, floor.z + 1.2 - Math.floor(i / 2) * 2.2);
+    shell.add(chair);
+  }
+
+  const shelf = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.0, 0.36), materials.wall);
+  shelf.position.set(floor.x + floor.w * 0.24, interiorY + 1.0, floor.z - floor.d * 0.06);
+  shell.add(shelf);
+
+  const bed = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.42, 1.8), materials.finishWhite);
+  bed.position.set(floor.x - floor.w * 0.22, interiorY + 0.28, floor.z + floor.d * 0.16);
+  shell.add(bed);
+
+  const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, 1.6, 8), materials.finishGold);
+  lamp.position.set(floor.x + floor.w * 0.18, interiorY + 0.8, floor.z + floor.d * 0.2);
+  shell.add(lamp);
+
+  const innerSteps = [
+    [-0.28, -0.18, -0.12],
+    [0.04, 0.14, 0.0],
+    [0.36, 0.46, 0.12],
+  ];
+  innerSteps.forEach(([xOffset, yOffset, zOffset], stepIndex) => {
+    const step = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.22, 1.2), stepIndex % 2 ? materials.pitGlow : materials.parkourPad);
+    step.position.set(floor.x + floor.w * xOffset, interiorY + 0.25 + yOffset, floor.z + floor.d * zOffset);
+    shell.add(step);
+    state.platforms.push({ x: step.position.x, z: step.position.z, width: 1.2, depth: 1.2, y: step.position.y + 0.11 });
+  });
+
+  const innerArch = new THREE.Mesh(new THREE.TorusGeometry(1.3, 0.08, 8, 28, Math.PI), materials.finishGold);
+  innerArch.position.set(floor.x, interiorY + 1.5, floor.z - floor.d * 0.16);
+  innerArch.rotation.z = Math.PI;
+  shell.add(innerArch);
+
+  if (index > 0) {
+    const mezzanine = new THREE.Mesh(new THREE.BoxGeometry(floor.w * 0.52, 0.14, floor.d * 0.28), materials.rope);
+    mezzanine.position.set(floor.x - floor.w * 0.1, floor.y + 1.55, floor.z + floor.d * 0.02);
+    shell.add(mezzanine);
+    state.platforms.push({ x: mezzanine.position.x, z: mezzanine.position.z, width: floor.w * 0.5, depth: floor.d * 0.24, y: mezzanine.position.y + 0.07 });
+  }
 }
 
 function addParkourPlatform(group, { x, y, z, w, d, index = 0 }) {
@@ -1014,26 +1281,30 @@ function addParkourPlatform(group, { x, y, z, w, d, index = 0 }) {
   group.add(rail);
 
   const ladder = createLadder(y + 1.05);
-  ladder.position.set(x - w / 2 - 0.95, 0.02, z + d / 2 - 0.05);
+  ladder.position.set(x - w / 2 - 0.22, 0.02, z + d / 2 - 0.05);
   ladder.rotation.y = Math.PI / 2;
   group.add(ladder);
 
   const support = new THREE.Mesh(new THREE.BoxGeometry(0.32, y + 1.2, 0.38), materials.bark);
-  support.position.set(x - w / 2 - 0.95, (y + 1.2) / 2, z + d / 2 - 0.4);
+  support.position.set(x - w / 2 - 0.22, (y + 1.2) / 2, z + d / 2 - 0.4);
   support.castShadow = true;
   group.add(support);
 
+  const wallClamp = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.24, 0.76), materials.finishGold);
+  wallClamp.position.set(x - w / 2 + 0.04, y + 0.92, z + d / 2 - 0.14);
+  group.add(wallClamp);
+
   state.platforms.push({ x, z, width: w, depth: d, y: y + 0.22 });
   state.ladders.push({
-    x: ladder.position.x + 0.12,
+    x: ladder.position.x + 0.18,
     z: ladder.position.z + 0.22,
-    climbX: ladder.position.x + 0.12,
+    climbX: ladder.position.x + 0.18,
     climbZ: ladder.position.z + 0.22,
-    width: 1.45,
-    depth: 1.55,
+    width: 1.1,
+    depth: 1.35,
     targetY: y + 0.22,
-    exitX: x - w / 2 + 1.12,
-    exitZ: z + d / 2 - 1.1,
+    exitX: x - w / 2 + 1.45,
+    exitZ: z + d / 2 - 1.15,
   });
 }
 
@@ -1276,7 +1547,13 @@ function placePlayer(pos) {
   state.player.verticalVelocity = 0;
   state.player.parkourStarted = false;
   state.player.climbing = null;
+  state.player.climbPhase = 0;
   state.sprinting = false;
+  state.player.object.rotation.set(0, 0, 0);
+  ["leftArm", "rightArm", "leftLeg", "rightLeg"].forEach((name) => {
+    const limb = state.player.object.getObjectByName(name);
+    if (limb) limb.rotation.set(0, 0, 0);
+  });
 }
 
 function addExit(pos) {
@@ -1962,23 +2239,32 @@ function updateVerticalMovement(dt, moving) {
   if (ladder || state.player.climbing) {
     const activeLadder = state.player.climbing || ladder;
     state.player.climbing = activeLadder;
+    state.player.climbPhase += dt * 7.5;
     state.player.velocity.multiplyScalar(0.82);
-    position.x = THREE.MathUtils.lerp(position.x, activeLadder.climbX ?? activeLadder.x, Math.min(1, dt * 1.8));
-    position.z = THREE.MathUtils.lerp(position.z, activeLadder.climbZ ?? activeLadder.z, Math.min(1, dt * 1.8));
-    position.y = Math.min(activeLadder.targetY, position.y + dt * 1.18);
+    const climbX = activeLadder.climbX ?? activeLadder.x;
+    const climbZ = activeLadder.climbZ ?? activeLadder.z;
+    position.x = THREE.MathUtils.lerp(position.x, climbX, Math.min(1, dt * 2.8));
+    position.z = THREE.MathUtils.lerp(position.z, climbZ, Math.min(1, dt * 2.8));
+    position.y = Math.min(activeLadder.targetY, position.y + dt * 0.88);
+    position.x += Math.sin(state.player.climbPhase) * 0.015;
+    position.z += Math.cos(state.player.climbPhase * 0.8) * 0.01;
     state.player.verticalVelocity = 0;
     state.player.parkourStarted = true;
     state.stamina = Math.min(1, state.stamina + dt * 0.5);
     status("Climbing ladder");
     if (position.y >= activeLadder.targetY - 0.03) {
       position.y = activeLadder.targetY;
-      position.x = THREE.MathUtils.lerp(position.x, activeLadder.exitX, Math.min(1, dt * 2.8));
-      position.z = THREE.MathUtils.lerp(position.z, activeLadder.exitZ, Math.min(1, dt * 2.8));
+      position.x = THREE.MathUtils.lerp(position.x, activeLadder.exitX, Math.min(1, dt * 2.0));
+      position.z = THREE.MathUtils.lerp(position.z, activeLadder.exitZ, Math.min(1, dt * 2.0));
       if (Math.hypot(position.x - activeLadder.exitX, position.z - activeLadder.exitZ) < 0.12) {
         state.player.climbing = null;
+        state.player.climbPhase = 0;
+        state.player.object.rotation.x = 0;
+        state.player.object.rotation.z = 0;
         status("Reached upper floor");
       }
     }
+    posePlayerForClimb();
     return;
   }
 
@@ -2004,6 +2290,29 @@ function updateVerticalMovement(dt, moving) {
   }
 
   if (position.y < -2.2) killPlayer("Missed the parkour jump");
+}
+
+function posePlayerForClimb() {
+  const root = state.player.object;
+  const leftArm = root.getObjectByName("leftArm");
+  const rightArm = root.getObjectByName("rightArm");
+  const leftLeg = root.getObjectByName("leftLeg");
+  const rightLeg = root.getObjectByName("rightLeg");
+  if (leftArm && rightArm && leftLeg && rightLeg) {
+    const phase = state.player.climbPhase;
+    leftArm.rotation.x = -1.55;
+    rightArm.rotation.x = -1.12;
+    leftArm.rotation.z = -0.12;
+    rightArm.rotation.z = 0.12;
+    leftLeg.rotation.x = Math.sin(phase) * 0.75 - 0.55;
+    rightLeg.rotation.x = Math.sin(phase + Math.PI) * 0.75 - 0.55;
+    leftLeg.rotation.z = 0.1;
+    rightLeg.rotation.z = -0.1;
+    root.rotation.z = Math.sin(phase * 0.3) * 0.08;
+  } else {
+    root.rotation.z = Math.sin(state.player.climbPhase * 0.4) * 0.04;
+    root.rotation.x = -0.18;
+  }
 }
 
 function getActiveLadder(position) {
@@ -2054,6 +2363,7 @@ function movePlayerStepped(velocity, dt) {
 }
 
 function animateFallbackLimbs(dt, moving) {
+  if (state.player.climbing) return;
   const root = state.player.object;
   const phase = performance.now() * 0.01;
   const swing = moving ? Math.sin(phase) * 0.85 : 0;
